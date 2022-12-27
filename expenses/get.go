@@ -32,5 +32,30 @@ func GetOneExpenses(c echo.Context) error {
 	default:
 		return c.JSON(http.StatusInternalServerError, Err{Massage: "can't scan expenses:" + err.Error()})
 	}
+}
 
+func GetAllExpanses(c echo.Context) error {
+
+	stmt, err := db.Prepare("SELECT id, title, amount, note, tags FROM expenses")
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, Err{Massage: "can't prepare query all expenses statment:" + err.Error()})
+	}
+
+	rows, err := stmt.Query()
+
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, Err{Massage: "can't query all expenses:" + err.Error()})
+	}
+
+	es := []Expenses{}
+
+	for rows.Next() {
+		e := Expenses{}
+		err := rows.Scan(&e.Id, &e.Title, &e.Amount, &e.Note, pq.Array(&e.Tags))
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, Err{Massage: "can't scan expenses:" + err.Error()})
+		}
+		es = append(es, e)
+	}
+	return c.JSON(http.StatusOK, es)
 }
