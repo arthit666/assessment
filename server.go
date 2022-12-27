@@ -19,8 +19,9 @@ func main() {
 	e.Use(middleware.Recover())
 
 	e.POST("/expenses", expenses.CreateExpensesHandler)
+	e.GET("/expenses/:id", expenses.GetOneExpenses)
 
-	log.Println("sever start at port:")
+	log.Println("sever start at port:", os.Getenv("PORT"))
 	log.Fatal(e.Start(os.Getenv("PORT")))
 
 }
