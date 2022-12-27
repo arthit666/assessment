@@ -16,6 +16,10 @@ func InitDb() {
 
 	db, err = sql.Open("postgres", os.Getenv("DATABASE_URL"))
 
+	if err != nil {
+		log.Fatal("Connect to database error", err)
+	}
+
 	createTb := `
     CREATE TABLE IF NOT EXISTS expenses (
         id SERIAL PRIMARY KEY,
