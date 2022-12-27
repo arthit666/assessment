@@ -20,6 +20,7 @@ func main() {
 
 	e.POST("/expenses", expenses.CreateExpensesHandler)
 	e.GET("/expenses/:id", expenses.GetOneExpenses)
+	e.PUT("/expenses/:id", expenses.PutExpenses)
 
 	log.Println("sever start at port:", os.Getenv("PORT"))
 	log.Fatal(e.Start(os.Getenv("PORT")))
