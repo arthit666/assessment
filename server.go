@@ -18,6 +18,8 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
+	e.POST("/expenses", expenses.CreateExpensesHandler)
+
 	log.Println("sever start at port:")
 	log.Fatal(e.Start(os.Getenv("PORT")))
 
