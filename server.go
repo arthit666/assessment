@@ -15,6 +15,16 @@ import (
 	"github.com/arthit666/assessment/expenses"
 )
 
+func middlewareVerifyAuth(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		token := c.Request().Header.Get("Authorization")
+		if token != "November 10, 2009" {
+			return c.JSON(http.StatusUnauthorized, "Token Unauthorized!!!")
+		}
+		return next(c)
+	}
+}
+
 func main() {
 	expenses.InitDb()
 
@@ -22,6 +32,7 @@ func main() {
 
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+	e.Use(middlewareVerifyAuth)
 
 	e.POST("/expenses", expenses.CreateExpensesHandler)
 	e.GET("/expenses/:id", expenses.GetOneExpenses)
