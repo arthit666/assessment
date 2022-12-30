@@ -11,4 +11,4 @@ CREATE TABLE "expenses" (
     PRIMARY KEY ("id")
 );
 
-INSERT INTO "expenses" ("id", "title", "amount", "note", "tags") VALUES (1, 'test-title', 50.0, 'test-note',ARRAY['test-tags1', 'test-tags2']);
+INSERT INTO "expenses" ("title", "amount", "note", "tags") VALUES ('test-title', 99.0, 'test-note',ARRAY['test-tags1', 'test-tags2']);

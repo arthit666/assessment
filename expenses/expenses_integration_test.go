@@ -3,136 +3,248 @@
 package expenses
 
 import (
-	"bytes"
-	"encoding/json"
-	"io"
+	"context"
+	"database/sql"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"net"
 	"net/http"
-	"strconv"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/labstack/echo/v4"
+	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCreateExpenses(t *testing.T) {
-	body := bytes.NewBufferString(`{
-	"title": "beer",
-	"amount": 80,
-	"note": "leo",
-	"tags": ["food", "beverage"]
-	}`)
-	e := Expenses{}
+const serverPort = 2565
 
-	res := request(http.MethodPost, uri("expenses"), body)
-	err := res.Decode(&e)
+const databaseRRL = "postgresql://root:root@db/go-example-db?sslmode=disable"
 
-	assert.Nil(t, err)
-	assert.Equal(t, http.StatusCreated, res.StatusCode)
-	assert.NotEqual(t, 0, e.Id)
-	assert.Equal(t, "beer", e.Title)
-	assert.Equal(t, 80.0, e.Amount)
-	assert.Equal(t, "leo", e.Note)
-	assert.Equal(t, []string{"food", "beverage"}, e.Tags)
-}
 func TestGetAllExpenses(t *testing.T) {
-	seedExpenses(t)
-	var es []Expenses
+	// Setup server
+	eh := echo.New()
+	go func(e *echo.Echo) {
+		db, err := sql.Open("postgres", databaseRRL)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	res := request(http.MethodGet, uri("expenses"), nil)
-	err := res.Decode(&es)
+		h := NewApplication(db)
 
-	assert.Nil(t, err)
-	assert.EqualValues(t, http.StatusOK, res.StatusCode)
-	assert.Greater(t, len(es), 0)
-}
-
-func TestGetExpensesByID(t *testing.T) {
-	e := seedExpenses(t)
-
-	latest := Expenses{}
-	res := request(http.MethodGet, uri("expenses", strconv.Itoa(e.Id)), nil)
-	err := res.Decode(&latest)
-
-	assert.Nil(t, err)
-	assert.Equal(t, http.StatusOK, res.StatusCode)
-	assert.Equal(t, e.Id, latest.Id)
-	assert.NotEmpty(t, latest.Title)
-	assert.NotEmpty(t, latest.Amount)
-	assert.NotEmpty(t, latest.Note)
-	assert.NotEmpty(t, latest.Tags)
-}
-
-func TestUpdateUserByID(t *testing.T) {
-	e := seedExpenses(t)
-
-	body := bytes.NewBufferString(`{
-		"title": "beer",
-		"amount": 80,
-		"note": "leo",
-		"tags": ["food", "beverage"]
-		}`)
-
-	updated := Expenses{}
-	res := request(http.MethodPut, uri("expenses", strconv.Itoa(e.Id)), body)
-	err := res.Decode(&updated)
-
-	assert.Nil(t, err)
-	assert.Equal(t, http.StatusOK, res.StatusCode)
-	assert.NotEqual(t, 0, updated.Id)
-	assert.Equal(t, "beer", updated.Title)
-	assert.Equal(t, 80.0, updated.Amount)
-	assert.Equal(t, "leo", updated.Note)
-	assert.Equal(t, []string{"food", "beverage"}, updated.Tags)
-
-}
-
-////////////
-
-func seedExpenses(t *testing.T) Expenses {
-	e := Expenses{}
-	body := bytes.NewBufferString(`{
-	"title": "strawberry smoothie",
-	"amount": 79,
-	"note": "night market promotion discount 10 bath", 
-	"tags": ["food", "beverage"]
-	}`)
-	err := request(http.MethodPost, uri("expenses"), body).Decode(&e)
-	if err != nil {
-		t.Fatal("can't create uomer:", err)
-	}
-	return e
-}
-
-func uri(paths ...string) string {
-	host := "http://localhost:2565"
-	if paths == nil {
-		return host
+		e.GET("/expenses", h.GetAllExpanses)
+		e.Start(fmt.Sprintf(":%d", serverPort))
+	}(eh)
+	for {
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", serverPort), 30*time.Second)
+		if err != nil {
+			log.Println(err)
+		}
+		if conn != nil {
+			conn.Close()
+			break
+		}
 	}
 
-	url := append([]string{host}, paths...)
-	return strings.Join(url, "/")
-}
-
-////////////
-
-func request(method, url string, body io.Reader) *Response {
-	req, _ := http.NewRequest(method, url, body)
-	req.Header.Add("Authorization", "November 10, 2009")
-	req.Header.Add("Content-Type", "application/json")
+	// Arrange
+	reqBody := ``
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://localhost:%d/expenses", serverPort), strings.NewReader(reqBody))
+	assert.NoError(t, err)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	client := http.Client{}
-	res, err := client.Do(req)
-	return &Response{res, err}
-}
 
-type Response struct {
-	*http.Response
-	err error
-}
+	// Act
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
 
-func (r *Response) Decode(v interface{}) error {
-	if r.err != nil {
-		return r.err
+	byteBody, err := ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	resp.Body.Close()
+
+	// Assertions
+	expected := "[{\"id\":1,\"title\":\"test-title\",\"amount\":99,\"note\":\"test-note\",\"tags\":[\"test-tags1\",\"test-tags2\"]}]"
+
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		assert.Equal(t, expected, strings.TrimSpace(string(byteBody)))
 	}
 
-	return json.NewDecoder(r.Body).Decode(v)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	err = eh.Shutdown(ctx)
+	assert.NoError(t, err)
+
+}
+
+func TestGetOneAllExpenses(t *testing.T) {
+	// Setup server
+	eh := echo.New()
+	go func(e *echo.Echo) {
+		db, err := sql.Open("postgres", databaseRRL)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		h := NewApplication(db)
+
+		e.GET("/expenses/:id", h.GetOneExpenses)
+		e.Start(fmt.Sprintf(":%d", serverPort))
+	}(eh)
+	for {
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", serverPort), 30*time.Second)
+		if err != nil {
+			log.Println(err)
+		}
+		if conn != nil {
+			conn.Close()
+			break
+		}
+	}
+
+	// Arrange
+	reqBody := ``
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://localhost:%d/expenses/%d", serverPort, 1), strings.NewReader(reqBody))
+	assert.NoError(t, err)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	client := http.Client{}
+
+	// Act
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+
+	byteBody, err := ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	resp.Body.Close()
+
+	// Assertions
+	expected := "{\"id\":1,\"title\":\"test-title\",\"amount\":99,\"note\":\"test-note\",\"tags\":[\"test-tags1\",\"test-tags2\"]}"
+
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		assert.Equal(t, expected, strings.TrimSpace(string(byteBody)))
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	err = eh.Shutdown(ctx)
+	assert.NoError(t, err)
+}
+
+func TestPutExpenses(t *testing.T) {
+	// Setup server
+	eh := echo.New()
+	go func(e *echo.Echo) {
+		db, err := sql.Open("postgres", databaseRRL)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		h := NewApplication(db)
+
+		e.PUT("/expenses/:id", h.PutExpenses)
+		e.Start(fmt.Sprintf(":%d", serverPort))
+	}(eh)
+	for {
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", serverPort), 30*time.Second)
+		if err != nil {
+			log.Println(err)
+		}
+		if conn != nil {
+			conn.Close()
+			break
+		}
+	}
+
+	// Arrange
+	reqBody := `{
+				"title": "test-title",
+				"amount": 80,
+				"note": "test-note",
+				"tags": ["test-tags1","test-tags2"]
+			}`
+	req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("http://localhost:%d/expenses/%d", serverPort, 1), strings.NewReader(reqBody))
+	assert.NoError(t, err)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	client := http.Client{}
+
+	// Act
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+
+	byteBody, err := ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	resp.Body.Close()
+
+	// Assertions
+	expected := "{\"id\":1,\"title\":\"test-title\",\"amount\":80,\"note\":\"test-note\",\"tags\":[\"test-tags1\",\"test-tags2\"]}"
+
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		assert.Equal(t, expected, strings.TrimSpace(string(byteBody)))
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	err = eh.Shutdown(ctx)
+	assert.NoError(t, err)
+}
+
+func TestCreateExpenses(t *testing.T) {
+	// Setup server
+	eh := echo.New()
+	go func(e *echo.Echo) {
+		db, err := sql.Open("postgres", databaseRRL)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		h := NewApplication(db)
+
+		e.POST("/expenses", h.CreateExpenses)
+		e.Start(fmt.Sprintf(":%d", serverPort))
+	}(eh)
+	for {
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", serverPort), 30*time.Second)
+		if err != nil {
+			log.Println(err)
+		}
+		if conn != nil {
+			conn.Close()
+			break
+		}
+	}
+
+	// Arrange
+	reqBody := `{
+		"title": "test-title",
+		"amount": 99,
+		"note": "test-note",
+		"tags": ["test-tags1","test-tags2"]
+	}`
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://localhost:%d/expenses", serverPort), strings.NewReader(reqBody))
+	assert.NoError(t, err)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	client := http.Client{}
+
+	// Act
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+
+	byteBody, err := ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	resp.Body.Close()
+
+	// Assertions
+	expected := "{\"id\":2,\"title\":\"test-title\",\"amount\":99,\"note\":\"test-note\",\"tags\":[\"test-tags1\",\"test-tags2\"]}"
+
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusCreated, resp.StatusCode)
+		assert.Equal(t, expected, strings.TrimSpace(string(byteBody)))
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	err = eh.Shutdown(ctx)
+	assert.NoError(t, err)
 }

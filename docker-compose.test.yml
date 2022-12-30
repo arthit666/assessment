@@ -24,7 +24,6 @@ services:
       POSTGRES_USER: root
       POSTGRES_PASSWORD: root
       POSTGRES_DB: go-example-db
-      DATABASE_URL: postgresql://root:root@db/go-example-db?sslmode=disable
     restart: on-failure
     volumes:
       - ./db:/docker-entrypoint-initdb.d/
