@@ -26,7 +26,7 @@ func middlewareVerifyAuth(next echo.HandlerFunc) echo.HandlerFunc {
 }
 
 func main() {
-	expenses.InitDb()
+	h := expenses.InitDb()
 
 	e := echo.New()
 
@@ -34,10 +34,10 @@ func main() {
 	e.Use(middleware.Recover())
 	e.Use(middlewareVerifyAuth)
 
-	e.POST("/expenses", expenses.CreateExpensesHandler)
-	e.GET("/expenses/:id", expenses.GetOneExpenses)
-	e.PUT("/expenses/:id", expenses.PutExpenses)
-	e.GET("/expenses", expenses.GetAllExpanses)
+	e.POST("/expenses", h.CreateExpenses)
+	e.GET("/expenses/:id", h.GetOneExpenses)
+	e.PUT("/expenses/:id", h.PutExpenses)
+	e.GET("/expenses", h.GetAllExpanses)
 
 	go func() {
 		if err := e.Start(os.Getenv("PORT")); err != nil && err != http.ErrServerClosed {

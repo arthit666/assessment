@@ -1,5 +1,7 @@
 package expenses
 
+import "database/sql"
+
 type Expenses struct {
 	Id     int      `json:"id"`
 	Title  string   `json:"title"`
@@ -10,4 +12,12 @@ type Expenses struct {
 
 type Err struct {
 	Massage string `json:"massage"`
+}
+
+type handler struct {
+	DB *sql.DB
+}
+
+func NewApplication(db *sql.DB) *handler {
+	return &handler{db}
 }

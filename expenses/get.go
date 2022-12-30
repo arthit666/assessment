@@ -9,10 +9,10 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func GetOneExpenses(c echo.Context) error {
+func (h *handler) GetOneExpenses(c echo.Context) error {
 	id := c.Param("id")
 
-	stmt, err := db.Prepare("SELECT id, title, amount, note, tags FROM expenses WHERE id = $1")
+	stmt, err := h.DB.Prepare("SELECT id, title, amount, note, tags FROM expenses WHERE id = $1")
 
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, Err{Massage: "can't prepare query expenses statment:" + err.Error()})
@@ -34,9 +34,9 @@ func GetOneExpenses(c echo.Context) error {
 	}
 }
 
-func GetAllExpanses(c echo.Context) error {
+func (h *handler) GetAllExpanses(c echo.Context) error {
 
-	stmt, err := db.Prepare("SELECT id, title, amount, note, tags FROM expenses")
+	stmt, err := h.DB.Prepare("SELECT id, title, amount, note, tags FROM expenses")
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, Err{Massage: "can't prepare query all expenses statment:" + err.Error()})
 	}

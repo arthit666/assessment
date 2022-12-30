@@ -9,23 +9,25 @@ import (
 	"github.com/lib/pq"
 )
 
-func PutExpenses(c echo.Context) error {
+func (h *handler) PutExpenses(c echo.Context) error {
 	id := c.Param("id")
 
 	e := Expenses{}
 	err := c.Bind(&e)
+
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, Err{Massage: err.Error()})
 	}
 
 	idInt, err := strconv.Atoi(id)
+
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, Err{Massage: err.Error()})
 	}
 
 	e.Id = idInt
 
-	stmt, err := db.Prepare("UPDATE expenses SET title=$2, amount=$3, note=$4, tags=$5 WHERE id=$1 RETURNING id, title, amount , note, tags")
+	stmt, err := h.DB.Prepare("UPDATE expenses SET title=$2, amount=$3, note=$4, tags=$5 WHERE id=$1 RETURNING id, title, amount , note, tags")
 
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, Err{Massage: "can't prepare query expenses statment:" + err.Error()})
