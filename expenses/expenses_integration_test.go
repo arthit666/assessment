@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -118,7 +117,7 @@ func uri(paths ...string) string {
 
 func request(method, url string, body io.Reader) *Response {
 	req, _ := http.NewRequest(method, url, body)
-	req.Header.Add("Authorization", os.Getenv("AUTH_TOKEN"))
+	req.Header.Add("Authorization", "November 10, 2009")
 	req.Header.Add("Content-Type", "application/json")
 	client := http.Client{}
 	res, err := client.Do(req)
