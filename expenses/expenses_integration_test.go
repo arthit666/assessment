@@ -26,17 +26,7 @@ const databaseRRL = "postgresql://root:root@db/go-example-db?sslmode=disable"
 func TestGetAllExpenses(t *testing.T) {
 	// Setup server
 	eh := echo.New()
-	go func(e *echo.Echo) {
-		db, err := sql.Open("postgres", databaseRRL)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		h := NewApplication(db)
-
-		e.GET("/expenses", h.GetAllExpanses)
-		e.Start(fmt.Sprintf(":%d", serverPort))
-	}(eh)
+	go setupServer(eh)
 	for {
 		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", serverPort), 30*time.Second)
 		if err != nil {
@@ -81,17 +71,7 @@ func TestGetAllExpenses(t *testing.T) {
 func TestGetOneAllExpenses(t *testing.T) {
 	// Setup server
 	eh := echo.New()
-	go func(e *echo.Echo) {
-		db, err := sql.Open("postgres", databaseRRL)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		h := NewApplication(db)
-
-		e.GET("/expenses/:id", h.GetOneExpenses)
-		e.Start(fmt.Sprintf(":%d", serverPort))
-	}(eh)
+	go setupServer(eh)
 	for {
 		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", serverPort), 30*time.Second)
 		if err != nil {
@@ -135,17 +115,7 @@ func TestGetOneAllExpenses(t *testing.T) {
 func TestPutExpenses(t *testing.T) {
 	// Setup server
 	eh := echo.New()
-	go func(e *echo.Echo) {
-		db, err := sql.Open("postgres", databaseRRL)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		h := NewApplication(db)
-
-		e.PUT("/expenses/:id", h.PutExpenses)
-		e.Start(fmt.Sprintf(":%d", serverPort))
-	}(eh)
+	go setupServer(eh)
 	for {
 		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", serverPort), 30*time.Second)
 		if err != nil {
@@ -194,17 +164,7 @@ func TestPutExpenses(t *testing.T) {
 func TestCreateExpenses(t *testing.T) {
 	// Setup server
 	eh := echo.New()
-	go func(e *echo.Echo) {
-		db, err := sql.Open("postgres", databaseRRL)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		h := NewApplication(db)
-
-		e.POST("/expenses", h.CreateExpenses)
-		e.Start(fmt.Sprintf(":%d", serverPort))
-	}(eh)
+	go setupServer(eh)
 	for {
 		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", serverPort), 30*time.Second)
 		if err != nil {
@@ -247,4 +207,19 @@ func TestCreateExpenses(t *testing.T) {
 	defer cancel()
 	err = eh.Shutdown(ctx)
 	assert.NoError(t, err)
+}
+
+func setupServer(e *echo.Echo) {
+	db, err := sql.Open("postgres", databaseRRL)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	h := NewApplication(db)
+
+	e.POST("/expenses", h.CreateExpenses)
+	e.PUT("/expenses/:id", h.PutExpenses)
+	e.GET("/expenses/:id", h.GetOneExpenses)
+	e.GET("/expenses", h.GetAllExpanses)
+	e.Start(fmt.Sprintf(":%d", serverPort))
 }
