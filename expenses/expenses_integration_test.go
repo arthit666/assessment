@@ -1,4 +1,5 @@
 //go:build integration
+// +build integration
 
 package expenses
 
@@ -23,7 +24,7 @@ const serverPort = 2565
 
 const databaseRRL = "postgresql://root:root@db/go-example-db?sslmode=disable"
 
-func TestGetAllExpenses(t *testing.T) {
+func TestGetAllExpensesIt(t *testing.T) {
 	// Setup server
 	eh := echo.New()
 	go setupServer(eh)
@@ -68,7 +69,7 @@ func TestGetAllExpenses(t *testing.T) {
 
 }
 
-func TestGetOneAllExpenses(t *testing.T) {
+func TestGetOneExpensesIt(t *testing.T) {
 	// Setup server
 	eh := echo.New()
 	go setupServer(eh)
@@ -112,7 +113,7 @@ func TestGetOneAllExpenses(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestPutExpenses(t *testing.T) {
+func TestPutExpensesIt(t *testing.T) {
 	// Setup server
 	eh := echo.New()
 	go setupServer(eh)
@@ -161,7 +162,7 @@ func TestPutExpenses(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestCreateExpenses(t *testing.T) {
+func TestCreateExpensesIt(t *testing.T) {
 	// Setup server
 	eh := echo.New()
 	go setupServer(eh)
